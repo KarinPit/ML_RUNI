@@ -20,7 +20,6 @@ def preprocess(X, y):
     - X: The mean normalized inputs.
     - y: The mean normalized labels.
     """
-    # Mean normalization: (x - mean) / (max - min)
     X = (X - X.mean()) / (X.max() - X.min())
     y = (y - y.mean()) / (y.max() - y.min())
 
@@ -38,7 +37,6 @@ def apply_bias_trick(X):
     - X: Input data with an additional column of ones in the
         zeroth position (m instances over n+1 features).
     """
-    # Ensure X is 2D
     if X.ndim == 1:
         X = X.reshape(-1, 1)
     ones = np.ones((X.shape[0], 1))
@@ -147,7 +145,7 @@ def efficient_gradient_descent(X, y, theta, alpha, num_iters):
     - J_history: the loss value for every iteration.
     """
 
-    J_history = [] 
+    J_history = []
     m = y.shape[0]
     for i in range(num_iters):
         predictions = X @ theta
@@ -197,7 +195,7 @@ def find_best_alpha(X_train, y_train, X_val, y_val, iterations):
         2,
         3,
     ]
-    alpha_dict = {} 
+    alpha_dict = {}
     for alpha in alphas:
         theta_init = np.zeros(X_train.shape[1])
         theta, _ = efficient_gradient_descent(
