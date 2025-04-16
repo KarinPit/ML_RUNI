@@ -91,10 +91,10 @@ def gradient_descent(X, y, theta, alpha, num_iters):
     J_history = []
 
     for i in range(num_iters):
-        predictions = X @ theta
-        errors = predictions - y
-        gradient = (1 / m) * (X.T @ errors)
-        theta = theta - alpha * gradient
+        predictions = X @ theta # Predict current y values
+        errors = predictions - y # Compute error vector
+        gradient = (1 / m) * (X.T @ errors) # Compute gradient
+        theta = theta - alpha * gradient # Update weights using gradient descent
 
         J = compute_cost(X, y, theta)
         J_history.append(J)
@@ -152,15 +152,20 @@ def efficient_gradient_descent(X, y, theta, alpha, num_iters):
         errors = predictions - y
         cost = (1 / (2 * m)) * np.sum(errors**2)
 
-        if np.isnan(cost) or np.isinf(cost):
+        if np.isnan(cost) or np.isinf(cost): # Stop if cost is unstable
             break
+        
         J_history.append(cost)
         gradient = (1 / m) * (X.T @ errors)
-        if np.any(np.isnan(gradient)) or np.any(np.isinf(gradient)):
+        
+        if np.any(np.isnan(gradient)) or np.any(np.isinf(gradient)): # Stop if gradient blows up
             break
+        
         theta -= alpha * gradient
-        if i > 0 and abs(J_history[-2] - J_history[-1]) < 1e-8:
+        
+        if i > 0 and abs(J_history[-2] - J_history[-1]) < 1e-8: # # Stop early if cost improvement is very small
             break
+        
     return theta, J_history
 
 
@@ -228,33 +233,40 @@ def forward_feature_selection(X_train, y_train, X_val, y_val, best_alpha, iterat
     num_features = X_train.shape[1]
     remaining_features = list(range(num_features))
 
-    for _ in range(5):
+    for _ in range(5): # Select 5 features in total
         best_feature = None
         lowest_cost = float("inf")
 
-        for feature in remaining_features:
-            candidate_features = selected_features + [feature]
+        for feature in remaining_features: # Loop over features not yet selected
+            candidate_features = selected_features + [feature]  # Try adding this feature
 
+            # Select columns for training & validation
             X_train_subset = X_train[:, candidate_features]
             X_val_subset = X_val[:, candidate_features]
 
+             # Add bias column to training & validation data 
             X_train_bias = apply_bias_trick(X_train_subset)
             X_val_bias = apply_bias_trick(X_val_subset)
 
-            theta_init = np.zeros(X_train_bias.shape[1])
-
+            theta_init = np.zeros(X_train_bias.shape[1]) # Initialize theta with zeros
+            
+            # Train model using only the selected candidate features
             theta, _ = efficient_gradient_descent(
                 X_train_bias, y_train, theta_init, best_alpha, iterations
             )
 
+            # Compute validation loss with current feature set
             cost = compute_cost(X_val_bias, y_val, theta)
 
+            # If this feature gives a better model, save it
             if cost < lowest_cost:
                 lowest_cost = cost
                 best_feature = feature
 
+        # Permanently add the best-performing feature from this round
         selected_features.append(best_feature)
         remaining_features.remove(best_feature)
+        
     return selected_features
 
 
