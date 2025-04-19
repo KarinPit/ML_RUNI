@@ -5,8 +5,6 @@
 
 import numpy as np
 import pandas as pd
-import itertools
-
 
 def preprocess(X, y):
     """
@@ -287,11 +285,16 @@ def create_square_features(df):
 
     new_features = {}
 
+    # Add square terms
     for feature in feature_names:
         new_features[f"{feature}^2"] = df[feature] ** 2
 
-    for f1, f2 in itertools.combinations(feature_names, 2):
-        new_features[f"{f1}*{f2}"] = df[f1] * df[f2]
+    # Add interaction terms
+    for i in range(len(feature_names)):
+        for j in range(i + 1, len(feature_names)):
+            f1 = feature_names[i]
+            f2 = feature_names[j]
+            new_features[f"{f1}*{f2}"] = df[f1] * df[f2]
 
     df_poly = pd.concat([df, pd.DataFrame(new_features)], axis=1)
 
