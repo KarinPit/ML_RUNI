@@ -73,13 +73,13 @@ def calc_gini(data):
     - gini: The gini impurity value.
     """
     gini = 0.0
-    ###########################################################################
-    # TODO: Implement the function.                                           #
-    ###########################################################################
-    pass
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
+    labels = data[:, -1]  # Extract labels (last column)
+    unique_labels, counts = np.unique(labels, return_counts=True) # Finds all the unique label values & tells how many times each label appears
+    total = len(labels)
+    gini = 1.0
+    for count in counts:
+        prob = count / total
+        gini -= prob ** 2
     return gini
 
 def calc_entropy(data):
@@ -93,13 +93,14 @@ def calc_entropy(data):
     - entropy: The entropy value.
     """
     entropy = 0.0
-    ###########################################################################
-    # TODO: Implement the function.                                           #
-    ###########################################################################
-    pass
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
+    labels = data[:, -1]  # Extract labels (last column)
+    unique_labels, counts = np.unique(labels, return_counts=True) # Finds all the unique label values & tells how many times each label appears
+    total = len(labels)
+    entropy = 0.0
+    for count in counts:
+        prob = count / total
+        if prob > 0:
+            entropy -= prob * np.log2(prob)
     return entropy
 
 class DecisionNode:
@@ -128,13 +129,9 @@ class DecisionNode:
         - pred: the prediction of the node
         """
         pred = None
-        ###########################################################################
-        # TODO: Implement the function.                                           #
-        ###########################################################################
-        pass
-        ###########################################################################
-        #                             END OF YOUR CODE                            #
-        ###########################################################################
+        labels = self.data[:, -1]
+        values, counts = np.unique(labels, return_counts=True)
+        pred = values[np.argmax(counts)] # Return the majority label in the current node's data
         return pred
         
     def add_child(self, node, val):
@@ -143,13 +140,8 @@ class DecisionNode:
 
         This function has no return value
         """
-        ###########################################################################
-        # TODO: Implement the function.                                           #
-        ###########################################################################
-        pass
-        ###########################################################################
-        #                             END OF YOUR CODE                            #
-        ###########################################################################
+        self.children.append(node)
+        self.children_values.append(val)
         
     def calc_feature_importance(self, n_total_sample):
         """
@@ -161,13 +153,17 @@ class DecisionNode:
         This function has no return value - it stores the feature importance in 
         self.feature_importance
         """
-        ###########################################################################
-        # TODO: Implement the function.                                           #
-        ###########################################################################
-        pass
-        ###########################################################################
-        #                             END OF YOUR CODE                            #
-        ###########################################################################
+        ## Formula Used: ((number of samples at this node) / (total number of samples at the root)) * (impurity reduction (gain) from splitting on feature A)
+        if n_total_sample == 0:
+            self.feature_importance = 0
+        else:
+            current_impurity = self.impurity_func(self.data) # Impurity before split
+            weighted_impurity = 0 # Initialize post-split impurity
+            for child in self.children:
+                weight = len(child.data) / len(self.data) # Proportion of samples in this child
+                weighted_impurity += weight * self.impurity_func(child.data)
+            delta_impurity = current_impurity - weighted_impurity # Gain from splitting
+            self.feature_importance = (len(self.data) / n_total_sample) * delta_impurity
     
     def goodness_of_split(self, feature):
         """
@@ -181,15 +177,34 @@ class DecisionNode:
         - groups: a dictionary holding the data after splitting 
                   according to the feature values.
         """
+        ## Formula Used: (impurity before split) - sum over feature values[((the number of samples in the subset where feature A has value v) / (the total number of samples at the current node (before splitting)) * (impurity of each subset)]
         goodness = 0
         groups = {} # groups[feature_value] = data_subset
-        ###########################################################################
-        # TODO: Implement the function.                                           #
-        ###########################################################################
-        pass
-        ###########################################################################
-        #                             END OF YOUR CODE                            #
-        ###########################################################################
+        
+        values = np.unique(self.data[:, feature])  # Find all unique values of the chosen feature
+        total_samples = len(self.data)              # Total number of examples in this node
+        impurity_before = self.impurity_func(self.data)  # Calculate impurity of the full node before splitting
+        weighted_impurity = 0                        # Initialize weighted impurity after splitting
+        split_info = 0                               # Initialize Split Information (used only if gain_ratio)
+
+        for val in values:
+            subset = self.data[self.data[:, feature] == val]  # Subset where feature == val
+            groups[val] = subset                              # Save the subset in groups
+            prob = len(subset) / total_samples                # Probability (weight) of this subset
+            weighted_impurity += prob * self.impurity_func(subset)  # Weighted impurity contribution
+            if self.gain_ratio and prob > 0:
+                split_info -= prob * np.log2(prob)             # Calculate split info (entropy of feature values)
+
+        gain = impurity_before - weighted_impurity  # How much impurity decreased after split
+
+        if self.gain_ratio:
+            if split_info == 0:
+                goodness = 0                          # Avoid division by zero
+            else:
+                goodness = gain / split_info          # Normalize gain by split_info (Gain Ratio)
+        else:
+            goodness = gain                           # If no gain ratio, just use regular gain
+
         return goodness, groups
     
     def split(self):
@@ -200,13 +215,35 @@ class DecisionNode:
 
         This function has no return value
         """
-        ###########################################################################
-        # TODO: Implement the function.                                           #
-        ###########################################################################
-        pass
-        ###########################################################################
-        #                             END OF YOUR CODE                            #
-        ###########################################################################
+        if self.terminal or self.depth == self.max_depth:
+            self.terminal = True                              # Make it a leaf if splitting is not allowed
+            return
+
+        best_gain = -np.inf
+        best_feature = None
+        best_groups = None
+
+        # Try every feature to find the one with the best split
+        for i in range(self.data.shape[1] - 1):               # Exclude label column
+            gain, groups = self.goodness_of_split(i)
+            if gain > best_gain:
+                best_gain = gain
+                best_feature = i
+                best_groups = groups
+
+        if best_feature is None or best_gain <= 0:
+            self.terminal = True                              # No good split found, become a leaf
+            return
+
+        self.feature = best_feature                           # Save best feature used
+
+        # Create child nodes from the split
+        for val, subset in best_groups.items():
+            child = DecisionNode(subset, self.impurity_func, depth=self.depth + 1,
+                                max_depth=self.max_depth, gain_ratio=self.gain_ratio)
+            self.add_child(child, val)
+
+        self.calc_feature_importance(n_total_sample=len(self.data))  # Calculate FI after split
 
                     
 class DecisionTree:
