@@ -73,13 +73,13 @@ def calc_gini(data):
     - gini: The gini impurity value.
     """
     gini = 0.0
-    labels = data[:, -1]  # Extract labels (last column)
-    unique_labels, counts = np.unique(labels, return_counts=True) # Finds all the unique label values & tells how many times each label appears
+    labels = data[:, -1] # Extract labels
+    unique_labels, counts = np.unique(labels, return_counts=True)
     total = len(labels)
     gini = 1.0
     for count in counts:
         prob = count / total
-        gini -= prob ** 2
+        gini -= prob ** 2 # Subtract square of probability
     return gini
 
 def calc_entropy(data):
@@ -100,12 +100,10 @@ def calc_entropy(data):
     for count in counts:
         prob = count / total
         if prob > 0:
-            entropy -= prob * np.log2(prob)
+            entropy -= prob * np.log2(prob) # Apply entropy formula
     return entropy
 
 class DecisionNode:
-
-    
     def __init__(self, data, impurity_func, feature=-1,depth=0, chi=1, max_depth=1000, gain_ratio=False):
         
         self.data = data # the relevant data for the node
@@ -131,7 +129,7 @@ class DecisionNode:
         pred = None
         labels = self.data[:, -1]
         values, counts = np.unique(labels, return_counts=True)
-        pred = values[np.argmax(counts)] # Return the majority label in the current node's data
+        pred = values[np.argmax(counts)] # Choose label with highest frequency
         return pred
         
     def add_child(self, node, val):
@@ -154,16 +152,7 @@ class DecisionNode:
         self.feature_importance
         """
         ## Formula Used: ((number of samples at this node) / (total number of samples at the root)) * (impurity reduction (gain) from splitting on feature A)
-        if n_total_sample == 0:
-            self.feature_importance = 0
-        else:
-            current_impurity = self.impurity_func(self.data) # Impurity before split
-            weighted_impurity = 0 # Initialize post-split impurity
-            for child in self.children:
-                weight = len(child.data) / len(self.data) # Proportion of samples in this child
-                weighted_impurity += weight * self.impurity_func(child.data)
-            delta_impurity = current_impurity - weighted_impurity # Gain from splitting
-            self.feature_importance = (len(self.data) / n_total_sample) * delta_impurity
+        self.feature_importance += self.impurity_func(self.data) * len(self.data) / n_total_sample
     
     def goodness_of_split(self, feature):
         """
@@ -181,29 +170,21 @@ class DecisionNode:
         goodness = 0
         groups = {} # groups[feature_value] = data_subset
         
-        values = np.unique(self.data[:, feature])  # Find all unique values of the chosen feature
-        total_samples = len(self.data)              # Total number of examples in this node
-        impurity_before = self.impurity_func(self.data)  # Calculate impurity of the full node before splitting
-        weighted_impurity = 0                        # Initialize weighted impurity after splitting
-        split_info = 0                               # Initialize Split Information (used only if gain_ratio)
+        feature_values = self.data[:, feature]
+        for value in np.unique(feature_values):
+            groups[value] = self.data[feature_values == value] # Group by feature value
 
-        for val in values:
-            subset = self.data[self.data[:, feature] == val]  # Subset where feature == val
-            groups[val] = subset                              # Save the subset in groups
-            prob = len(subset) / total_samples                # Probability (weight) of this subset
-            weighted_impurity += prob * self.impurity_func(subset)  # Weighted impurity contribution
-            if self.gain_ratio and prob > 0:
-                split_info -= prob * np.log2(prob)             # Calculate split info (entropy of feature values)
+        impurity_before = self.impurity_func(self.data)
+        impurity_after = 0
+        for subset in groups.values():
+            impurity_after += len(subset) / len(self.data) * self.impurity_func(subset)
 
-        gain = impurity_before - weighted_impurity  # How much impurity decreased after split
+        goodness = impurity_before - impurity_after # Information Gain
 
         if self.gain_ratio:
-            if split_info == 0:
-                goodness = 0                          # Avoid division by zero
-            else:
-                goodness = gain / split_info          # Normalize gain by split_info (Gain Ratio)
-        else:
-            goodness = gain                           # If no gain ratio, just use regular gain
+            split_info = -np.sum([len(subset) / len(self.data) * np.log2(len(subset) / len(self.data)) for subset in groups.values()])
+            if split_info != 0:
+                goodness /= split_info # Adjust by split information
 
         return goodness, groups
     
@@ -215,35 +196,53 @@ class DecisionNode:
 
         This function has no return value
         """
-        if self.terminal or self.depth == self.max_depth:
-            self.terminal = True                              # Make it a leaf if splitting is not allowed
+        # Check stopping conditions: maximum depth reached OR node is pure (only one class label)
+        if self.depth >= self.max_depth or len(np.unique(self.data[:, -1])) == 1:
+            self.terminal = True
             return
 
-        best_gain = -np.inf
-        best_feature = None
-        best_groups = None
+        best_goodness = -1 # Best goodness of split found so far
+        best_feature = None # Best feature to split by
+        best_groups = None # Best groups after split
 
-        # Try every feature to find the one with the best split
-        for i in range(self.data.shape[1] - 1):               # Exclude label column
-            gain, groups = self.goodness_of_split(i)
-            if gain > best_gain:
-                best_gain = gain
-                best_feature = i
+        # Try splitting on each feature
+        for feature in range(self.data.shape[1] - 1):
+            goodness, groups = self.goodness_of_split(feature)
+            if goodness > best_goodness:
+                best_goodness = goodness
+                best_feature = feature
                 best_groups = groups
 
-        if best_feature is None or best_gain <= 0:
-            self.terminal = True                              # No good split found, become a leaf
+         # If no good split was found
+        if best_goodness <= 0:
+            self.terminal = True
             return
+        
+        # Chi-squared pruning check
+        if self.chi < 1:
+            dof = len(best_groups) - 1
+            chi_square = 0
+            labels = self.data[:, -1]
+            label_values, label_counts = np.unique(labels, return_counts=True)
+            expected = label_counts / len(self.data)
 
-        self.feature = best_feature                           # Save best feature used
+            for subset in best_groups.values():
+                subset_labels = subset[:, -1]
+                subset_label_values, subset_label_counts = np.unique(subset_labels, return_counts=True)
+                for val, count in zip(subset_label_values, subset_label_counts):
+                    idx = np.where(label_values == val)[0][0]
+                    chi_square += (count - len(subset) * expected[idx]) ** 2 / (len(subset) * expected[idx])
 
-        # Create child nodes from the split
-        for val, subset in best_groups.items():
-            child = DecisionNode(subset, self.impurity_func, depth=self.depth + 1,
-                                max_depth=self.max_depth, gain_ratio=self.gain_ratio)
-            self.add_child(child, val)
-
-        self.calc_feature_importance(n_total_sample=len(self.data))  # Calculate FI after split
+            if chi_square < chi_table[dof][self.chi]:
+                self.terminal = True
+                return
+            
+        # Perform split
+        self.feature = best_feature
+        for value, subset in best_groups.items():
+            child = DecisionNode(subset, self.impurity_func, depth=self.depth + 1, chi=self.chi, max_depth=self.max_depth, gain_ratio=self.gain_ratio)
+            child.split()
+            self.add_child(child, value)
 
                     
 class DecisionTree:
@@ -264,13 +263,8 @@ class DecisionTree:
         This function has no return value
         """
         self.root = None
-        ###########################################################################
-        # TODO: Implement the function.                                           #
-        ###########################################################################
-        pass
-        ###########################################################################
-        #                             END OF YOUR CODE                            #
-        ###########################################################################
+        self.root = DecisionNode(self.data, self.impurity_func, chi=self.chi, max_depth=self.max_depth, gain_ratio=self.gain_ratio)
+        self.root.split() # Start splitting recursively from root
 
     def predict(self, instance):
         """
@@ -283,13 +277,14 @@ class DecisionTree:
         Output: the prediction of the instance.
         """
         pred = None
-        ###########################################################################
-        # TODO: Implement the function.                                           #
-        ###########################################################################
-        pass
-        ###########################################################################
-        #                             END OF YOUR CODE                            #
-        ###########################################################################
+        node = self.root
+        # Traverse down the tree following feature values
+        while not node.terminal:
+            if instance[node.feature] in node.children_values:
+                idx = node.children_values.index(instance[node.feature])
+                node = node.children[idx]
+            else:
+                break # If feature value not found in children, stop
         return node.pred
 
     def calc_accuracy(self, dataset):
@@ -301,18 +296,14 @@ class DecisionTree:
      
         Output: the accuracy of the decision tree on the given dataset (%).
         """
-        accuracy = 0
-        ###########################################################################
-        # TODO: Implement the function.                                           #
-        ###########################################################################
-        pass
-        ###########################################################################
-        #                             END OF YOUR CODE                            #
-        ###########################################################################
-        return accuracy
+        correct = 0
+        for instance in dataset:
+            if self.predict(instance) == instance[-1]: # Compare prediction to true label
+                correct += 1 
+        return correct / len(dataset) * 100 # Accuracy in %
         
     def depth(self):
-        return self.root.depth()
+        return self.root.depth
 
 def depth_pruning(X_train, X_validation):
     """
@@ -331,17 +322,15 @@ def depth_pruning(X_train, X_validation):
     validation  = []
     root = None
     for max_depth in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]:
-        ###########################################################################
-        # TODO: Implement the function.                                           #
-        ###########################################################################
-        pass
-        ###########################################################################
-        #                             END OF YOUR CODE                            #
-        ###########################################################################
+        tree = DecisionTree(X_train, calc_entropy, max_depth=max_depth, gain_ratio=True)
+        tree.build_tree()
+        training.append(tree.calc_accuracy(X_train))
+        validation.append(tree.calc_accuracy(X_validation))
+
     return training, validation
 
 
-def chi_pruning(X_train, X_test):
+def chi_pruning(X_train, X_validation):
 
     """
     Calculate the training and validation accuracies for different chi values
@@ -358,18 +347,18 @@ def chi_pruning(X_train, X_test):
     - depth: the tree depth for each chi value
     """
     chi_training_acc = []
-    chi_validation_acc  = []
+    chi_validation_acc = []
     depth = []
+    chi_values = [0.5, 0.25, 0.1, 0.05, 0.0001] # Different chi levels to test
 
-    ###########################################################################
-    # TODO: Implement the function.                                           #
-    ###########################################################################
-    pass
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
-        
-    return chi_training_acc, chi_testing_acc, depth
+    for chi in chi_values:
+        tree = DecisionTree(X_train, calc_entropy, chi=chi, gain_ratio=True)
+        tree.build_tree()
+        chi_training_acc.append(tree.calc_accuracy(X_train))
+        chi_validation_acc.append(tree.calc_accuracy(X_validation))
+        depth.append(tree.root.depth if hasattr(tree.root, 'depth') else 0) # Store tree depth
+
+    return chi_training_acc, chi_validation_acc, depth
 
 
 def count_nodes(node):
@@ -381,13 +370,11 @@ def count_nodes(node):
  
     Output: the number of node in the tree.
     """
-    ###########################################################################
-    # TODO: Implement the function.                                           #
-    ###########################################################################
-    pass
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
+    if node is None:
+        return 0
+    n_nodes = 1 # Count the current node
+    for child in node.children:
+        n_nodes += count_nodes(child) # Count children recursively
     return n_nodes
 
 
