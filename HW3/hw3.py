@@ -8,38 +8,52 @@ class conditional_independence():
         self.X = {0: 0.3, 1: 0.7}  # P(X=x)
         self.Y = {0: 0.3, 1: 0.7}  # P(Y=y)
         self.C = {0: 0.5, 1: 0.5}  # P(C=c)
+        
+        # First, let's define P(X|C) and P(Y|C) to ensure conditional independence
+        # X given C: P(X=x|C=c) ->
+        #   P(X=0|C=0) = 0.1
+        #   P(X=1|C=0) = 0.9
+        #   P(X=0|C=1) = 0.5
+        #   P(X=1|C=1) = 0.5
+        
+        # Y given C: P(Y=y|C=c) ->
+        #   P(Y=0|C=0) = 0.1
+        #   P(Y=1|C=0) = 0.9
+        #   P(Y=0|C=1) = 0.5
+        #   P(Y=1|C=1) = 0.5
 
         self.X_Y = {
-            (0, 0): None,
-            (0, 1): None,
-            (1, 0): None,
-            (1, 1): None
-        }  # P(X=x, Y=y)
-
+            (0, 0): 0.13,  # = P(X=0,Y=0,C=0) + P(X=0,Y=0,C=1) = 0.005 + 0.125 = 0.13
+            (0, 1): 0.17,  # = P(X=0,Y=1,C=0) + P(X=0,Y=1,C=1) = 0.045 + 0.125 = 0.17
+            (1, 0): 0.17,  # = P(X=1,Y=0,C=0) + P(X=1,Y=0,C=1) = 0.045 + 0.125 = 0.17
+            (1, 1): 0.53  # = P(X=1,Y=1,C=0) + P(X=1,Y=1,C=1) = 0.405 + 0.125 = 0.53
+        } # P(X=x, Y=y) = = P(X=x,Y=y,C=0) + P(X=x,Y=y,C=1)
+        
         self.X_C = {
-            (0, 0): None,
-            (0, 1): None,
-            (1, 0): None,
-            (1, 1): None
-        }  # P(X=x, C=y)
-
+            (0, 0): 0.05,  # = P(X=0|C=0) * C = 0.1 * 0.5 = 0.05
+            (0, 1): 0.25,  # = P(X=0|C=1) * P(C=1) = 0.5 * 0.5 = 0.25
+            (1, 0): 0.45,  # = P(X=1|C=0) * P(C=0) = 0.9 * 0.5 = 0.45
+            (1, 1): 0.25,  # = P(X=1|C=1) * P(C=1) = 0.5 * 0.5 = 0.25
+        } # P(X=x, C=y) = P(X=x|C=c) * P(C=c)
+        
         self.Y_C = {
-            (0, 0): None,
-            (0, 1): None,
-            (1, 0): None,
-            (1, 1): None
-        }  # P(Y=y, C=c)
-
+            (0, 0): 0.05,  # = P(Y=0|C=0) * P(C=0) = 0.1 * 0.5 = 0.05
+            (0, 1): 0.25,  # = P(Y=0|C=1) * P(C=1) = 0.5 * 0.5 = 0.25
+            (1, 0): 0.45,  # = P(Y=1|C=0) * P(C=0) = 0.9 * 0.5 = 0.45
+            (1, 1): 0.25,  # = P(Y=1|C=1) * P(C=1) = 0.5 * 0.5 = 0.25
+        } # P(Y=y, C=c) = P(Y=y|C=c) * P(C=c)
+        
         self.X_Y_C = {
-            (0, 0, 0): None,
-            (0, 0, 1): None,
-            (0, 1, 0): None,
-            (0, 1, 1): None,
-            (1, 0, 0): None,
-            (1, 0, 1): None,
-            (1, 1, 0): None,
-            (1, 1, 1): None,
-        }  # P(X=x, Y=y, C=c)
+            (0, 0, 0): 0.005,  # = P(X=0|C=0) * P(Y=0|C=0) * P(C=0) = 0.1 * 0.1 * 0.5 = 0.005
+            (0, 0, 1): 0.125,  # = P(X=0|C=1) * P(Y=0|C=1) * P(C=1) = 0.5 * 0.5 * 0.5 = 0.125
+            (0, 1, 0): 0.045,  # = P(X=0|C=0) * P(Y=1|C=0) * P(C=0) = 0.1 * 0.9 * 0.5 = 0.045
+            (0, 1, 1): 0.125,  # = P(X=0|C=1) * P(Y=1|C=1) * P(C=1) = 0.5 * 0.5 * 0.5 = 0.125
+            (1, 0, 0): 0.045,  # = P(X=1|C=0) * P(Y=0|C=0) * P(C=0) = 0.9 * 0.1 * 0.5 = 0.045
+            (1, 0, 1): 0.125,  # = P(X=1|C=1) * P(Y=0|C=1) * P(C=1) = 0.5 * 0.5 * 0.5 = 0.125
+            (1, 1, 0): 0.405,  # = P(X=1|C=0) * P(Y=1|C=0) * P(C=0) = 0.9 * 0.9 * 0.5 = 0.405
+            (1, 1, 1): 0.125,  # = P(X=1|C=1) * P(Y=1|C=1) * P(C=1) = 0.5 * 0.5 * 0.5 = 0.125
+        } # P(X=x, Y=y, C=c) = P(X=x|C=c) * P(Y=y|C=c) * P(C=c)
+        
 
     def is_X_Y_dependent(self):
         """
@@ -48,13 +62,10 @@ class conditional_independence():
         X = self.X
         Y = self.Y
         X_Y = self.X_Y
-        ###########################################################################
-        # TODO: Implement the function.                                           #
-        ###########################################################################
-        pass
-        ###########################################################################
-        #                             END OF YOUR CODE                            #
-        ###########################################################################
+        for (x, y), p_xy in X_Y.items():
+            if not np.isclose(p_xy, X[x] * Y[y]):
+                return True  # dependency found
+        return False  # all joint probs match product of marginals → independent
 
     def is_X_Y_given_C_independent(self):
         """
@@ -66,13 +77,17 @@ class conditional_independence():
         X_C = self.X_C
         Y_C = self.Y_C
         X_Y_C = self.X_Y_C
-        ###########################################################################
-        # TODO: Implement the function.                                           #
-        ###########################################################################
-        pass
-        ###########################################################################
-        #                             END OF YOUR CODE                            #
-        ###########################################################################
+        for c in C:
+            p_c = C[c]
+            for x in X:
+                for y in Y:
+                    p_xyz = X_Y_C[(x, y, c)]        # P(X=x, Y=y, C=c)
+                    p_x_given_c = X_C[(x, c)] / p_c # P(X=x | C=c)
+                    p_y_given_c = Y_C[(y, c)] / p_c # P(Y=y | C=c)
+                    p_xy_given_c = p_xyz / p_c      # P(X=x, Y=y | C=c)
+                    if not np.isclose(p_xy_given_c, p_x_given_c * p_y_given_c):
+                        return False
+        return True
 
 def poisson_log_pmf(k, rate):
     """
@@ -82,13 +97,7 @@ def poisson_log_pmf(k, rate):
     return the log pmf value for instance k given the rate
     """
     log_p = None
-    ###########################################################################
-    # TODO: Implement the function.                                           #
-    ###########################################################################
-    pass
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
+    log_p = k * np.log(rate) - rate - np.math.lgamma(k + 1)
     return log_p
 
 def get_poisson_log_likelihoods(samples, rates):
@@ -98,14 +107,9 @@ def get_poisson_log_likelihoods(samples, rates):
 
     return: 1d numpy array, where each value represent that log-likelihood value of rates[i]
     """
-    likelihoods = None
-    ###########################################################################
-    # TODO: Implement the function.                                           #
-    ###########################################################################
-    pass
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
+    likelihoods = likelihoods = np.array([
+        np.sum([poisson_log_pmf(k, rate) for k in samples]) for rate in rates
+    ])
     return likelihoods
 
 def possion_iterative_mle(samples, rates):
@@ -117,13 +121,8 @@ def possion_iterative_mle(samples, rates):
     """
     rate = 0.0
     likelihoods = get_poisson_log_likelihoods(samples, rates) # might help
-    ###########################################################################
-    # TODO: Implement the function.                                           #
-    ###########################################################################
-    pass
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
+    best_index = np.argmax(likelihoods)
+    rate = rates[best_index]
     return rate
 
 def possion_analytic_mle(samples):
@@ -132,14 +131,7 @@ def possion_analytic_mle(samples):
 
     return: the rate that maximizes the likelihood
     """
-    mean = None
-    ###########################################################################
-    # TODO: Implement the function.                                           #
-    ###########################################################################
-    pass
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
+    mean = np.mean(samples)
     return mean
 
 def normal_pdf(x, mean, std):
@@ -154,13 +146,9 @@ def normal_pdf(x, mean, std):
     Returns the normal distribution pdf according to the given mean and std for the given x.    
     """
     p = None
-    ###########################################################################
-    # TODO: Implement the function.                                           #
-    ###########################################################################
-    pass
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
+    coef = 1 / (np.sqrt(2 * np.pi) * std)
+    exponent = np.exp(-((x - mean) ** 2) / (2 * std ** 2))
+    p = coef * exponent
     return p
 
 class NaiveNormalClassDistribution():
@@ -173,40 +161,33 @@ class NaiveNormalClassDistribution():
         - dataset: The dataset as a 2d numpy array, assuming the class label is the last column
         - class_value : The class to calculate the parameters for.
         """
-        ###########################################################################
-        # TODO: Implement the function.                                           #
-        ###########################################################################
-        pass
-        ###########################################################################
-        #                             END OF YOUR CODE                            #
-        ###########################################################################
+        self.dataset = dataset
+        self.class_value = class_value
+        
+        # Filter only rows that match the class
+        self.class_data = dataset[dataset[:, -1] == class_value][:, :-1]  # remove the label column
+
+        # Compute mean and std per feature (column)
+        self.means = np.mean(self.class_data, axis=0)
+        self.stds = np.std(self.class_data, axis=0, ddof=1)  # Use sample std (ddof=1)
     
     def get_prior(self):
         """
         Returns the prior porbability of the class according to the dataset distribution.
         """
         prior = None
-        ###########################################################################
-        # TODO: Implement the function.                                           #
-        ###########################################################################
-        pass
-        ###########################################################################
-        #                             END OF YOUR CODE                            #
-        ###########################################################################
+        total_count = self.dataset.shape[0]
+        class_count = np.sum(self.dataset[:, -1] == self.class_value)
+        prior = class_count / total_count
         return prior
     
     def get_instance_likelihood(self, x):
         """
         Returns the likelihhod porbability of the instance under the class according to the dataset distribution.
         """
-        likelihood = None
-        ###########################################################################
-        # TODO: Implement the function.                                           #
-        ###########################################################################
-        pass
-        ###########################################################################
-        #                             END OF YOUR CODE                            #
-        ###########################################################################
+        likelihood = 1.0
+        for i in range(len(x)):
+            likelihood *= normal_pdf(x[i], self.means[i], self.stds[i])
         return likelihood
     
     def get_instance_posterior(self, x):
@@ -214,14 +195,7 @@ class NaiveNormalClassDistribution():
         Returns the posterior porbability of the instance under the class according to the dataset distribution.
         * Ignoring p(x)
         """
-        posterior = None
-        ###########################################################################
-        # TODO: Implement the function.                                           #
-        ###########################################################################
-        pass
-        ###########################################################################
-        #                             END OF YOUR CODE                            #
-        ###########################################################################
+        posterior = self.get_instance_likelihood(x) * self.get_prior()
         return posterior
 
 class MAPClassifier():
@@ -239,13 +213,8 @@ class MAPClassifier():
             - ccd1 : An object contating the relevant parameters and methods 
                      for the distribution of class 1.
         """
-        ###########################################################################
-        # TODO: Implement the function.                                           #
-        ###########################################################################
-        pass
-        ###########################################################################
-        #                             END OF YOUR CODE                            #
-        ###########################################################################
+        self.ccd0 = ccd0
+        self.ccd1 = ccd1
     
     def predict(self, x):
         """
@@ -257,13 +226,9 @@ class MAPClassifier():
             - 0 if the posterior probability of class 0 is higher and 1 otherwise.
         """
         pred = None
-        ###########################################################################
-        # TODO: Implement the function.                                           #
-        ###########################################################################
-        pass
-        ###########################################################################
-        #                             END OF YOUR CODE                            #
-        ###########################################################################
+        posterior_0 = self.ccd0.get_instance_posterior(x)
+        posterior_1 = self.ccd1.get_instance_posterior(x)
+        pred = 0 if posterior_0 > posterior_1 else 1
         return pred
 
 def compute_accuracy(test_set, map_classifier):
@@ -278,13 +243,14 @@ def compute_accuracy(test_set, map_classifier):
         - Accuracy = #Correctly Classified / test_set size
     """
     acc = None
-    ###########################################################################
-    # TODO: Implement the function.                                           #
-    ###########################################################################
-    pass
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
+    correct = 0
+    for instance in test_set:
+        x = instance[:-1]         # features
+        true_label = instance[-1] # actual label
+        predicted = map_classifier.predict(x)
+        if predicted == true_label:
+            correct += 1
+    acc = correct / len(test_set)
     return acc
 
 def multi_normal_pdf(x, mean, cov):
@@ -299,13 +265,16 @@ def multi_normal_pdf(x, mean, cov):
     Returns the normal distribution pdf according to the given mean and var for the given x.    
     """
     pdf = None
-    ###########################################################################
-    # TODO: Implement the function.                                           #
-    ###########################################################################
-    pass
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
+    d = len(x)
+    x = np.array(x)
+    mean = np.array(mean)
+    cov = np.array(cov)
+
+    det_cov = np.linalg.det(cov)
+    inv_cov = np.linalg.inv(cov)
+    norm_const = 1 / (np.sqrt((2 * np.pi) ** d * det_cov))
+    exponent = -0.5 * (x - mean).T @ inv_cov @ (x - mean)
+    pdf = norm_const * np.exp(exponent)
     return pdf
 
 class MultiNormalClassDistribution():
