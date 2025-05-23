@@ -1,3 +1,8 @@
+###### Your ID ######
+# ID1: 323842914
+# ID2: 208663120
+#####################
+
 import numpy as np
 
 class conditional_independence():
@@ -107,7 +112,7 @@ def get_poisson_log_likelihoods(samples, rates):
 
     return: 1d numpy array, where each value represent that log-likelihood value of rates[i]
     """
-    likelihoods = likelihoods = np.array([
+    likelihoods = np.array([
         np.sum([poisson_log_pmf(k, rate) for k in samples]) for rate in rates
     ])
     return likelihoods
@@ -120,7 +125,7 @@ def possion_iterative_mle(samples, rates):
     return: the rate that maximizes the likelihood 
     """
     rate = 0.0
-    likelihoods = get_poisson_log_likelihoods(samples, rates) # might help
+    likelihoods = get_poisson_log_likelihoods(samples, rates)
     best_index = np.argmax(likelihoods)
     rate = rates[best_index]
     return rate
